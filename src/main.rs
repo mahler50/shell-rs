@@ -4,14 +4,17 @@ use std::io::{self, Write};
 fn main() {
     // Wait for user input
     let stdin = io::stdin();
+    let mut input = String::new();
     loop {
         print!("$ ");
         io::stdout().flush().unwrap();
-        let mut input = String::new();
         stdin.read_line(&mut input).unwrap();
-        if input.trim().eq("exit".into()) {
-            break;
+        match input.trim() {
+            "exit 0" => break,
+            _ => {
+                println!("{}: command not found", input.trim());
+            }
         }
-        println!("{}: command not found", input.trim())
+        input.clear();
     }
 }
