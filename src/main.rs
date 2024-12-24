@@ -6,19 +6,28 @@ fn tokenize(s: &str) -> Vec<&str> {
     s.split(" ").collect()
 }
 
-fn type_builtin(args: Vec<&str>) {
+fn type_builtin(args: Vec<&str>, path: String) {
     args.iter().for_each(|cmd| {
         match *cmd {
             "echo" | "exit" | "type" => println!("{} is a shell builtin", cmd),
-            _ => println!("{}: not found", cmd),
+            _ => {
+                let split = &mut path.split(":");
+                if let Some(path) = 
+                    split.find(|path| std::fs::metadata(format!("{}/{}", path, cmd)).is_ok()) {
+                        println!("{} is {}/{}", cmd, path, cmd);
+                    } else {
+                        println!("{}: not found", cmd);
+                    }
+            }
         }
     });
 }
 
 fn main() {
-    // Wait for user input
     let stdin = io::stdin();
+    let path_env = std::env::var("PATH").unwrap();
     let mut input = String::new();
+
     loop {
         print!("$ ");
         io::stdout().flush().unwrap();
@@ -28,7 +37,7 @@ fn main() {
         match tokens[..] {
             ["exit", code] => process::exit(code.parse::<i32>().unwrap()),
             ["echo", ..] => println!("{}", tokens[1..].join(" ")),
-            ["type", ..] => type_builtin(tokens[1..].to_vec()),
+            ["type", ..] => type_builtin(tokens[1..].to_vec(), path_env.clone()),
             _ => {
                 println!("{}: command not found", command);
             }
