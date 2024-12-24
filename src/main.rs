@@ -50,8 +50,8 @@ fn main() {
             ["echo", ..] => println!("{}", tokens[1..].join(" ")),
             ["type", ..] => type_builtin(tokens[1..].to_vec(), path_env.clone()),
             _ => {
-                if let Some(_) = find_executable_file(tokens[0], path_env.clone()) {
-                    Command::new("path")
+                if let Some(path) = find_executable_file(tokens[0], path_env.clone()) {
+                    Command::new(path)
                     .args(&tokens[1..])
                     .status()
                     .expect("failed to execute process");
