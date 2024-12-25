@@ -41,35 +41,28 @@ fn pwd() {
 }
 
 fn cd(path: &str) {
-   match path.bytes().nth(0) {
-    Some(prev) => {
-        match prev {
-            b'/' => {
-                let target_path = PathBuf::from(path);
-                if let Ok(_) = std::env::set_current_dir(target_path) {
-
-                } else {
-                    println!("cd: {}: No such file or directory", path);
-                }
-            },
-            b'.' => {
-
-            },
-            b'~' => {
-                let home_path = std::env::var("HOME").unwrap();
-                if let Ok(_) = std::env::set_current_dir(home_path) {
-
-                } else {
-                    println!("cd: {}: No such file or directory", path);
-                }
+    match path.bytes().nth(0) {
+        Some(pre) => {
+            let target_path = match pre {
+                b'~' => {
+                    let home_path = std::env::var("HOME").expect("Failed to get HOME environment variable");
+                    PathBuf::from(home_path)
+                    .join(&path[2..])
+                },
+                b'.' => {
+                    std::env::current_dir()
+                        .unwrap_or_else(|_| PathBuf::from("/"))
+                        .join(path)
+                },
+                _ => PathBuf::from(path),
+            };
+            println!("{:?}", target_path);
+            if let Err(_) = std::env::set_current_dir(target_path) {
+                println!("cd: {}: No such file or sirectory", path);
             }
-            _ => {
-                println!("cd: {}: No such file or directory", path);
-        }
-        }
-    }
-    None => println!("cd: {}: No such file or directory", path)
-   } 
+        },
+        None => println!("cd: {}: No such file or sirectory", path)
+    }   
 }
 
 fn main() {
