@@ -11,15 +11,32 @@ static BUILTIN: LazyLock<Vec<&str>> = LazyLock::new(|| {
 fn parse_input(input: &str) -> Option<Vec<&str>> {
     let input = input.trim();
     let (cmd, args) = input.split_once(" ").unwrap_or((input, ""));
+    let mut in_single_quote = false;
+    let mut in_double_quote = false;
     let mut result = vec![cmd];
 
     let mut args = args.trim();
     while !args.is_empty() {
         match args.chars().next().unwrap() {
-            '\'' => {
-                let (arg, r) = args[1..].split_once('\'')?;
-                result.push(arg);
-                args = r
+            '\'' if !in_double_quote => {
+                if in_single_quote {
+                    in_single_quote = false;
+                    let (arg, r) = args[1..].split_once('\'')?;
+                    result.push(arg);
+                    args = r
+                } else {
+                    in_single_quote = true;
+                }
+            },
+            '"' if !in_single_quote => {
+                if in_double_quote {
+                    in_double_quote = false;
+                    let (arg, r) = args[1..].split_once('"')?;
+                    result.push(arg);
+                    args = r
+                } else {
+                    in_double_quote = true;
+                }
             },
             ' ' => {
                 args = args.trim_start()
