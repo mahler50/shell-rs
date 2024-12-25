@@ -1,6 +1,6 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
-use std::process::{self, Command};
+use std::{path::PathBuf, process::{self, Command}};
 
 // split command with whitespace
 fn tokenize(s: &str) -> Vec<&str> {
@@ -10,7 +10,7 @@ fn tokenize(s: &str) -> Vec<&str> {
 fn type_builtin(args: Vec<&str>, path: String) {
     args.iter().for_each(|cmd| {
         match *cmd {
-            "echo" | "exit" | "type" | "pwd" => println!("{} is a shell builtin", cmd),
+            "echo" | "exit" | "type" | "pwd" | "cd" => println!("{} is a shell builtin", cmd),
             _ => {
                 let split = &mut path.split(":");
                 if let Some(path) = 
@@ -40,6 +40,38 @@ fn pwd() {
     println!("{}", path_str);
 }
 
+fn cd(path: &str) {
+   match path.bytes().nth(0) {
+    Some(prev) => {
+        match prev {
+            b'/' => {
+                let target_path = PathBuf::from(path);
+                if let Ok(_) = std::env::set_current_dir(target_path) {
+
+                } else {
+                    println!("cd: {}: No such file or directory", path);
+                }
+            },
+            b'.' => {
+
+            },
+            b'~' => {
+                let home_path = std::env::var("HOME").unwrap();
+                if let Ok(_) = std::env::set_current_dir(home_path) {
+
+                } else {
+                    println!("cd: {}: No such file or directory", path);
+                }
+            }
+            _ => {
+                println!("cd: {}: No such file or directory", path);
+        }
+        }
+    }
+    None => println!("cd: {}: No such file or directory", path)
+   } 
+}
+
 fn main() {
     let stdin = io::stdin();
     let path_env = std::env::var("PATH").unwrap();
@@ -56,6 +88,7 @@ fn main() {
             ["echo", ..] => println!("{}", tokens[1..].join(" ")),
             ["type", ..] => type_builtin(tokens[1..].to_vec(), path_env.clone()),
             ["pwd"] => pwd(), 
+            ["cd", path] => cd(path),
             _ => {
                 if let Some(path) = find_executable_file(tokens[0], path_env.clone()) {
                     Command::new(path)
