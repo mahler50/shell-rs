@@ -56,7 +56,6 @@ fn cd(path: &str) {
                 },
                 _ => PathBuf::from(path),
             };
-            println!("{:?}", target_path);
             if let Err(_) = std::env::set_current_dir(target_path) {
                 println!("cd: {}: No such file or sirectory", path);
             }
