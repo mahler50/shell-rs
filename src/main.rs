@@ -10,7 +10,7 @@ fn tokenize(s: &str) -> Vec<&str> {
 fn type_builtin(args: Vec<&str>, path: String) {
     args.iter().for_each(|cmd| {
         match *cmd {
-            "echo" | "exit" | "type" => println!("{} is a shell builtin", cmd),
+            "echo" | "exit" | "type" | "pwd" => println!("{} is a shell builtin", cmd),
             _ => {
                 let split = &mut path.split(":");
                 if let Some(path) = 
@@ -34,6 +34,12 @@ fn find_executable_file(file_name: &str , path: String) -> Option<String> {
     None
 }
 
+fn pwd() {
+    let current_dir = std::env::current_dir().unwrap();
+    let path_str = current_dir.display();
+    println!("{}", path_str);
+}
+
 fn main() {
     let stdin = io::stdin();
     let path_env = std::env::var("PATH").unwrap();
@@ -49,6 +55,7 @@ fn main() {
             ["exit", code] => process::exit(code.parse::<i32>().unwrap()),
             ["echo", ..] => println!("{}", tokens[1..].join(" ")),
             ["type", ..] => type_builtin(tokens[1..].to_vec(), path_env.clone()),
+            ["pwd"] => pwd(), 
             _ => {
                 if let Some(path) = find_executable_file(tokens[0], path_env.clone()) {
                     Command::new(path)
