@@ -47,7 +47,11 @@ fn cd(path: &str) {
                 b'~' => {
                     let home_path = std::env::var("HOME").expect("Failed to get HOME environment variable");
                     PathBuf::from(home_path)
-                    .join(&path[2..])
+                    .join(if path.len() >= 2 {
+                        &path[2..]
+                    } else {
+                        &path[1..]
+                    })
                 },
                 b'.' => {
                     std::env::current_dir()
