@@ -1,25 +1,53 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
-use std::{path::PathBuf, process::{self, Command}};
+use std::{path::PathBuf, process::Command, sync::LazyLock};
 
-// split command with whitespace
-fn tokenize(s: &str) -> Vec<&str> {
-    s.split(" ").collect()
+static BUILTIN: LazyLock<Vec<&str>> = LazyLock::new(|| {
+    let mut c = vec!["echo", "exit", "type", "pwd", "cd"];
+    c.sort_unstable();
+    c
+});
+
+fn parse_input(input: &str) -> Option<Vec<&str>> {
+    let input = input.trim();
+    let (cmd, args) = input.split_once(" ").unwrap_or((input, ""));
+    let mut result = vec![cmd];
+
+    let mut args = args.trim();
+    while !args.is_empty() {
+        match args.chars().next().unwrap() {
+            '\'' => {
+                let (arg, r) = args[1..].split_once('\'')?;
+                result.push(arg);
+                args = r
+            },
+            ' ' => {
+                args = args.trim_start()
+            },
+            _ => {
+                let (arg, r) = args.split_once(' ').unwrap_or((args, ""));
+                result.push(arg);
+                args = r
+            }
+        }
+    }
+
+    Some(result)
 }
+
 
 fn type_builtin(args: Vec<&str>, path: String) {
     args.iter().for_each(|cmd| {
-        match *cmd {
-            "echo" | "exit" | "type" | "pwd" | "cd" => println!("{} is a shell builtin", cmd),
-            _ => {
-                let split = &mut path.split(":");
-                if let Some(path) = 
-                    split.find(|path| std::fs::metadata(format!("{}/{}", path, cmd)).is_ok()) {
-                        println!("{} is {}/{}", cmd, path, cmd);
-                    } else {
-                        println!("{}: not found", cmd);
-                    }
-            }
+        if BUILTIN.binary_search(cmd).is_ok() {
+            println!("{} is a shell builtin", cmd);
+        } else {
+            let split = &mut path.split(":");
+            if let Some(path) = 
+                split.find(|path| std::fs::metadata(format!("{}/{}", path, cmd)).is_ok()) {
+                    println!("{} is {}/{}", cmd, path, cmd);
+                } else {
+                    println!("{}: not found", cmd);
+                }
         }
     });
 }
@@ -70,30 +98,42 @@ fn cd(path: &str) {
 
 fn main() {
     let stdin = io::stdin();
-    let path_env = std::env::var("PATH").unwrap();
     let mut input = String::new();
+    let path_env = std::env::var("PATH").unwrap();
 
     loop {
         print!("$ ");
         io::stdout().flush().unwrap();
         stdin.read_line(&mut input).unwrap();
-        let command = input.trim();
-        let tokens = tokenize(command);
-        match tokens[..] {
-            ["exit", code] => process::exit(code.parse::<i32>().unwrap()),
-            ["echo", ..] => println!("{}", tokens[1..].join(" ")),
-            ["type", ..] => type_builtin(tokens[1..].to_vec(), path_env.clone()),
-            ["pwd"] => pwd(), 
-            ["cd", path] => cd(path),
-            _ => {
-                if let Some(path) = find_executable_file(tokens[0], path_env.clone()) {
-                    Command::new(path)
-                    .args(&tokens[1..])
-                    .status()
-                    .expect("failed to execute process");
-                } else {
-                    println!("{}: command not found", command);
-                }
+        let commands = parse_input(&input).expect("command parse error");
+        if let Some(cmd) = commands.first() {
+            match *cmd {
+                "exit" => {
+                    if commands.get(1).map_or(false, |x| *x == "0") {
+                        break;
+                    } else {
+                        todo!();
+                    }
+                },
+                "echo" => println!("{}", commands[1..].join(" ")),
+                "type" => type_builtin(commands[1..].to_vec(), path_env.clone()),
+                "pwd" => pwd(),
+                "cd" => {
+                    let Some(path) = commands.get(1) else {
+                        continue;
+                    };
+                    cd(*path);
+                },
+                _ => {
+                    if let Some(path) = find_executable_file(cmd, path_env.clone()) {
+                        Command::new(path)
+                        .args(&commands[1..])
+                        .status()
+                        .expect("failed to execute process");
+                    } else {
+                        println!("{}: command not found", input.trim());
+                    }
+                } 
             }
         }
         input.clear();
