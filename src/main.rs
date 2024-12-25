@@ -57,10 +57,10 @@ fn cd(path: &str) {
                 _ => PathBuf::from(path),
             };
             if let Err(_) = std::env::set_current_dir(target_path) {
-                println!("cd: {}: No such file or sirectory", path);
+                println!("cd: {}: No such file or directory", path);
             }
         },
-        None => println!("cd: {}: No such file or sirectory", path)
+        None => println!("cd: {}: No such file or directory", path)
     }   
 }
 
