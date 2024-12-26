@@ -9,7 +9,7 @@ static BUILTIN: LazyLock<Vec<&str>> = LazyLock::new(|| {
 });
 
 fn parse_quotes(input: &str) -> Vec<String> {
-    let mut chars = input.trim().chars();
+    let mut chars = input.trim().chars().peekable();
     let mut cur = String::new();
     let mut result = Vec::new();
     let mut in_single_quote = false;
@@ -18,22 +18,22 @@ fn parse_quotes(input: &str) -> Vec<String> {
     while let Some(c) = chars.next() {
         match c {
             '\'' if !in_double_quote => {
-                if in_single_quote && !cur.is_empty() {
-                    result.push(cur);
-                    cur = String::new();
-                }
                 in_single_quote = !in_single_quote;
             },
             '\"' if !in_single_quote => {
-                if in_double_quote && !cur.is_empty() {
-                    result.push(cur);
-                    cur = String::new();
-                }
                 in_double_quote = !in_double_quote;
             },
-            '\\' if !in_single_quote && !in_double_quote => {
+            '\\' if !in_double_quote && !in_single_quote => {
                 let c = chars.next().unwrap();
                 cur.push(c);
+            },
+            '\\' if in_double_quote => {
+                match chars.peek().unwrap() {
+                    '\\' | '$' | '"' => {
+                        cur.push(chars.next().unwrap());
+                    },
+                    _ => cur.push(c),
+                };
             },
             ' ' if !in_single_quote && !in_double_quote => {
                 if !cur.is_empty() {
