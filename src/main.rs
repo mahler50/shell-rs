@@ -8,54 +8,52 @@ static BUILTIN: LazyLock<Vec<&str>> = LazyLock::new(|| {
     c
 });
 
-fn parse_input(input: &str) -> Option<Vec<&str>> {
-    let input = input.trim();
-    let (cmd, args) = input.split_once(" ").unwrap_or((input, ""));
+fn parse_quotes(input: &str) -> Vec<String> {
+    let mut chars = input.trim().chars();
+    let mut cur = String::new();
+    let mut result = Vec::new();
     let mut in_single_quote = false;
     let mut in_double_quote = false;
-    let mut result = vec![cmd];
 
-    let mut args = args.trim();
-    while !args.is_empty() {
-        match args.chars().next().unwrap() {
+    while let Some(c) = chars.next() {
+        match c {
             '\'' if !in_double_quote => {
-                if in_single_quote {
-                    in_single_quote = false;
-                    let (arg, r) = args[1..].split_once('\'')?;
-                    result.push(arg);
-                    args = r
-                } else {
-                    in_single_quote = true;
+                if in_single_quote && !cur.is_empty() {
+                    result.push(cur);
+                    cur = String::new();
+                }
+                in_single_quote = !in_single_quote;
+            },
+            '\"' if !in_single_quote => {
+                if in_double_quote && !cur.is_empty() {
+                    result.push(cur);
+                    cur = String::new();
+                }
+                in_double_quote = !in_double_quote;
+            },
+            '\\' if !in_single_quote && !in_double_quote => {
+                let c = chars.next().unwrap();
+                cur.push(c);
+            },
+            ' ' if !in_single_quote && !in_double_quote => {
+                if !cur.is_empty() {
+                    result.push(cur);
+                    cur = String::new();
                 }
             },
-            '"' if !in_single_quote => {
-                if in_double_quote {
-                    in_double_quote = false;
-                    let (arg, r) = args[1..].split_once('"')?;
-                    result.push(arg);
-                    args = r
-                } else {
-                    in_double_quote = true;
-                }
-            },
-            ' ' => {
-                args = args.trim_start()
-            },
-            _ => {
-                let (arg, r) = args.split_once(' ').unwrap_or((args, ""));
-                result.push(arg);
-                args = r
-            }
+            _ => cur.push(c),
         }
     }
+    if !cur.is_empty() {
+        result.push(cur);
+    }
 
-    Some(result)
+    result
 }
 
-
-fn type_builtin(args: Vec<&str>, path: String) {
+fn type_builtin(args: Vec<String>, path: String) {
     args.iter().for_each(|cmd| {
-        if BUILTIN.binary_search(cmd).is_ok() {
+        if BUILTIN.binary_search(&cmd.as_str()).is_ok() {
             println!("{} is a shell builtin", cmd);
         } else {
             let split = &mut path.split(":");
@@ -122,9 +120,9 @@ fn main() {
         print!("$ ");
         io::stdout().flush().unwrap();
         stdin.read_line(&mut input).unwrap();
-        let commands = parse_input(&input).expect("command parse error");
+        let commands = parse_quotes(&input);
         if let Some(cmd) = commands.first() {
-            match *cmd {
+            match cmd.as_str() {
                 "exit" => {
                     if commands.get(1).map_or(false, |x| *x == "0") {
                         break;
@@ -139,7 +137,7 @@ fn main() {
                     let Some(path) = commands.get(1) else {
                         continue;
                     };
-                    cd(*path);
+                    cd(&path);
                 },
                 _ => {
                     if let Some(path) = find_executable_file(cmd, path_env.clone()) {
